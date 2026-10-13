@@ -1,0 +1,80 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Native builds
+android/
+ios/
+*.keystore
+!debug.keystore
+
+# Env & secrets
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+
+# Metro
+.metro-health-check*
+metro.config.js.bak
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.iml
+.cursor/
+.history/
+
+# Testing
+coverage/
+*.lcov
+
+# TypeScript
+*.tsbuildinfo
+
+# Expo Router
+expo-env.d.ts
+
+# NativeWind / Tailwind
+.nativewind-cache/
+
+# EAS
+eas-build-cache/
+
+# Misc
+.cache/
+tmp/
+temp/
+
+AGENTS.md
+CLAUDE.md
