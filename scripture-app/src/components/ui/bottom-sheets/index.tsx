@@ -1,11 +1,15 @@
-import React from "react";
-import { registerSheet, SheetDefinition } from "react-native-actions-sheet";
-import IndexSheet, { IndexSheetDefinition } from "./sheet";
-import LogoutSheet, { LogoutSheetDefinition } from "./logout";
+import React from 'react';
+import { registerSheet, SheetDefinition } from 'react-native-actions-sheet';
+import LogoutSheet, { LogoutSheetDefinition } from './logout';
+import VersionSheet, { VersionSheetDefinition } from './version';
+import NoteEditor, { NoteEditorDefinition } from './note-editor';
+import ChapterPicker, { ChapterPickerDefinition } from './chapter-picker';
 
 const sheets: Record<string, React.ElementType> = {
-  "index-sheet": IndexSheet,
-  "logout-sheet": LogoutSheet,
+  'logout-sheet': LogoutSheet,
+  'version-sheet': VersionSheet,
+  'note-editor': NoteEditor,
+  'chapter-picker': ChapterPicker,
 };
 
 (() => {
@@ -14,10 +18,12 @@ const sheets: Record<string, React.ElementType> = {
   });
 })();
 
-declare module "react-native-actions-sheet" {
+declare module 'react-native-actions-sheet' {
   interface Sheets {
-    "index-sheet": IndexSheetDefinition;
-    "logout-sheet": LogoutSheetDefinition;
+    'logout-sheet': LogoutSheetDefinition;
+    'version-sheet': VersionSheetDefinition;
+    'note-editor': NoteEditorDefinition;
+    'chapter-picker': ChapterPickerDefinition;
   }
 }
 

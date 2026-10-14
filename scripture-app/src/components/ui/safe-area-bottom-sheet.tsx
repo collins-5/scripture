@@ -1,12 +1,11 @@
 import React, { useRef } from 'react';
-import { View, Keyboard, Text as RNText } from 'react-native';
+import { View, Keyboard, Text as RNText, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemePreference } from '@/hooks/use-theme-preference';
-import { lightPalette, darkPalette } from '@/lib/theme/colors';
+import { Ionicons } from '@expo/vector-icons';
 import ActionSheet from 'react-native-actions-sheet';
-import { Button } from './button';
+import { useAppTheme } from '@/hooks/use-app-theme';
 
-interface SafeAreaBottomSheetProps {
+export interface SafeAreaBottomSheetProps {
   id: string;
   children: React.ReactNode;
   title?: string;
@@ -45,17 +44,22 @@ const SafeAreaBottomSheet: React.FC<SafeAreaBottomSheetProps> = ({
   snapPoints,
   initialSnapIndex = 0,
 }) => {
-  const { isDark } = useThemePreference();
-  const palette = isDark ? darkPalette : lightPalette;
+  const t = useAppTheme();
   const insets = useSafeAreaInsets();
   const actionSheetRef = useRef<any>(null);
 
-  const resolvedIconColor = iconColor ?? palette.brand.primary;
-  const resolvedIconBgColor = iconBgColor ?? palette.brand.primaryFaint;
+  const resolvedIconColor = iconColor ?? t.accent.main;
+  const resolvedIconBgColor = iconBgColor ?? t.accent.soft;
+
+  const bottomPadding =
+    customPaddingBottom !== undefined
+      ? customPaddingBottom
+      : Math.max(insets.bottom, 16) + 16;
 
   const handleClose = () => {
     Keyboard.dismiss();
     if (onClose) onClose();
+    actionSheetRef.current?.hide();
   };
 
   return (
@@ -71,87 +75,119 @@ const SafeAreaBottomSheet: React.FC<SafeAreaBottomSheetProps> = ({
         ? {
             snapPoints,
             initialSnapIndex,
-            defaultOverlayOpacity: 0.3,
+            defaultOverlayOpacity: 0.35,
           }
         : {})}
       containerStyle={{
-        paddingBottom:
-          customPaddingBottom !== undefined
-            ? customPaddingBottom
-            : insets.bottom,
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        backgroundColor: palette.surface.card,
-        shadowOpacity: 0,
-        shadowOffset: { width: 0, height: 0 },
-        shadowRadius: 0,
-        elevation: 0,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        backgroundColor: t.c.sheet,
+        borderTopWidth: 1,
+        borderTopColor: t.c.border,
+        shadowColor: '#000',
+        shadowOpacity: 0.18,
+        shadowRadius: 24,
+        shadowOffset: { width: 0, height: -8 },
+        elevation: 16,
       }}
       indicatorStyle={{
-        width: 50,
-        height: 5,
-        backgroundColor: palette.brand.primaryDark,
+        width: 44,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: t.c.faint,
+        marginTop: 6,
       }}
     >
       {(title || showCloseButton) && (
         <View
-          className="flex-row items-center justify-between px-6 pt-5 pb-4"
           style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 20,
+            paddingTop: 14,
+            paddingBottom: 14,
             borderBottomWidth: 1,
-            borderBottomColor: palette.border.medium,
+            borderBottomColor: t.c.border,
           }}
         >
-          <View className="flex-row items-center gap-3">
-            {icon && (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              flex: 1,
+            }}
+          >
+            {icon ? (
               <View
-                className="w-11 h-11 rounded-xl items-center justify-center"
-                style={{ backgroundColor: resolvedIconBgColor }}
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: resolvedIconBgColor,
+                }}
               >
                 {icon}
               </View>
-            )}
-            <View>
-              {title && (
+            ) : null}
+            <View style={{ flex: 1 }}>
+              {title ? (
                 <RNText
-                  className="text-lg font-bold"
-                  style={{ color: palette.text.dark }}
+                  style={{
+                    fontFamily: t.display.medium,
+                    fontSize: 18,
+                    color: t.c.text,
+                  }}
+                  numberOfLines={1}
                 >
                   {title}
                 </RNText>
-              )}
-              {subtitle && (
+              ) : null}
+              {subtitle ? (
                 <RNText
-                  className="text-[13px] mt-0.5"
-                  style={{ color: palette.text.muted }}
+                  style={{
+                    fontFamily: t.ui.regular,
+                    fontSize: 13,
+                    color: t.c.muted,
+                    marginTop: 2,
+                  }}
                   numberOfLines={1}
                 >
                   {subtitle}
                 </RNText>
-              )}
+              ) : null}
             </View>
           </View>
 
-          {showCloseButton && (
-            <Button
-              variant="ghost"
-              size="icon"
+          {showCloseButton ? (
+            <Pressable
               onPress={handleClose}
               disabled={loading}
-              iconProps={{
-                name: 'close',
-                size: 22,
-                color: palette.text.dark,
-              }}
-            />
-          )}
+              hitSlop={10}
+              style={({ pressed }) => ({
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: pressed ? t.c.border : 'transparent',
+                opacity: loading ? 0.4 : 1,
+              })}
+            >
+              <Ionicons name="close" size={20} color={t.c.text} />
+            </Pressable>
+          ) : null}
         </View>
       )}
 
       <View
         style={{
-          paddingHorizontal: 24,
-          paddingTop: 20,
-          paddingBottom: 0,
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: bottomPadding,
         }}
       >
         {children}

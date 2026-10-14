@@ -8,8 +8,12 @@ import React, {
 } from 'react';
 import { getStoredString, setStoredString } from '@/lib/storage';
 import { dayKey } from '@/lib/dates';
-import { scriptureService, ServerNote } from '@/lib/services/scriptureService';
-import { formatRef } from '@/lib/bible/meta';
+import {
+  scriptureService,
+  ServerNote,
+  ServerSavedVerse,
+  SavedVerseInput,
+} from '@/lib/services/scriptureService';
 
 export type Note = {
   id: string;
@@ -36,7 +40,6 @@ export type SavedVerse = {
 export type LastRead = { book: string; chapter: number; progress: number };
 
 type Persisted = {
-  saved: SavedVerse[];
   lastRead: LastRead | null;
   readDays: string[];
   planStart: string;
@@ -50,9 +53,17 @@ type LibraryContextValue = Persisted & {
   refreshNotes: () => Promise<void>;
   saveNote: (note: Partial<Note> & { body: string }) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
-  toggleSaved: (verse: Omit<SavedVerse, 'id' | 'savedAt'>) => void;
-  removeSaved: (id: string) => void;
-  isSaved: (book: string, chapter: number, verse: number, translation: string) => boolean;
+  saved: SavedVerse[];
+  savedLoading: boolean;
+  refreshSaved: () => Promise<void>;
+  toggleSaved: (verse: SavedVerseInput) => Promise<void>;
+  removeSaved: (id: string) => Promise<void>;
+  isSaved: (
+    book: string,
+    chapter: number,
+    verse: number,
+    translation: string,
+  ) => boolean;
   setLastRead: (value: LastRead) => void;
   markReadToday: () => void;
   restartPlan: () => void;
@@ -61,10 +72,6 @@ type LibraryContextValue = Persisted & {
 const STORAGE_KEY = '@reader-library';
 
 const LibraryContext = createContext<LibraryContextValue | null>(null);
-
-function savedId(book: string, chapter: number, verse: number, translation: string): string {
-  return `${translation}:${book}:${chapter}:${verse}`;
-}
 
 function computeStreak(days: string[]): number {
   const set = new Set(days);
@@ -79,14 +86,13 @@ function computeStreak(days: string[]): number {
 }
 
 function initialState(): Persisted {
-  return { saved: [], lastRead: null, readDays: [], planStart: dayKey() };
+  return { lastRead: null, readDays: [], planStart: dayKey() };
 }
 
 function sanitize(input: any): Persisted {
   const base = initialState();
   if (!input || typeof input !== 'object') return base;
   return {
-    saved: Array.isArray(input.saved) ? input.saved : base.saved,
     lastRead:
       input.lastRead &&
       typeof input.lastRead.book === 'string' &&
@@ -94,7 +100,10 @@ function sanitize(input: any): Persisted {
         ? {
             book: input.lastRead.book,
             chapter: Number(input.lastRead.chapter),
-            progress: Math.min(1, Math.max(0, Number(input.lastRead.progress) || 0)),
+            progress: Math.min(
+              1,
+              Math.max(0, Number(input.lastRead.progress) || 0),
+            ),
           }
         : null,
     readDays: Array.isArray(input.readDays)
@@ -108,24 +117,33 @@ function sanitize(input: any): Persisted {
 }
 
 function noteFromServer(raw: ServerNote): Note {
-  const ref = String(raw.verseReference ?? '');
-  const match = ref.match(/^(.+?)\s+(\d+)(?::(\d+))?$/);
   return {
     id: String(raw._id),
-    bookName: match?.[1],
-    chapter: match?.[2] ? Number(match[2]) : undefined,
-    verse: match?.[3] ? Number(match[3]) : undefined,
-    quote: '',
-    body: String(raw.content ?? ''),
-    updatedAt: raw.createdAt ? new Date(raw.createdAt).getTime() : Date.now(),
+    book: raw.book || undefined,
+    bookName: raw.bookName || undefined,
+    chapter: raw.chapter ?? undefined,
+    verse: raw.verse ?? undefined,
+    quote: raw.quote ?? '',
+    body: String(raw.body ?? ''),
+    updatedAt: raw.updatedAt
+      ? new Date(raw.updatedAt).getTime()
+      : raw.createdAt
+      ? new Date(raw.createdAt).getTime()
+      : Date.now(),
   };
 }
 
-function buildReference(note: Partial<Note>): string {
-  if (note.bookName && note.chapter) {
-    return formatRef(note.bookName, note.chapter, note.verse);
-  }
-  return 'Reflection';
+function savedFromServer(raw: ServerSavedVerse): SavedVerse {
+  return {
+    id: String(raw._id),
+    book: raw.book,
+    bookName: raw.bookName,
+    chapter: raw.chapter,
+    verse: raw.verse,
+    text: raw.text,
+    translation: raw.translation,
+    savedAt: raw.createdAt ? new Date(raw.createdAt).getTime() : Date.now(),
+  };
 }
 
 export function LibraryProvider({ children }: { children: React.ReactNode }) {
@@ -133,6 +151,8 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
+  const [saved, setSaved] = useState<SavedVerse[]>([]);
+  const [savedLoading, setSavedLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -154,7 +174,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     const timer = setTimeout(() => {
-      setStoredString(STORAGE_KEY, JSON.stringify(state)).catch(() => undefined);
+      setStoredString(STORAGE_KEY, JSON.stringify(state)).catch(
+        () => undefined,
+      );
     }, 400);
     return () => clearTimeout(timer);
   }, [state, hydrated]);
@@ -165,57 +187,123 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       const rows = await scriptureService.getUserNotes();
       setNotes(rows.map(noteFromServer));
     } catch {
-      // silent — user may be offline or signed out
+      return;
     } finally {
       setNotesLoading(false);
     }
   }, []);
 
-  const saveNote = useCallback(async (note: Partial<Note> & { body: string }) => {
-    const trimmed = note.body.trim();
-    if (!trimmed) return;
-    const reference = buildReference(note);
+  const saveNote = useCallback(
+    async (note: Partial<Note> & { body: string }) => {
+      const trimmed = note.body.trim();
+      if (!trimmed) return;
 
-    if (note.id) {
-      const updated = await scriptureService.updateNote(note.id, reference, trimmed);
-      const mapped = noteFromServer(updated);
-      setNotes((prev) => prev.map((n) => (n.id === mapped.id ? mapped : n)));
-      return;
-    }
+      if (note.id) {
+        const updated = await scriptureService.updateNote(note.id, {
+          book: note.book ?? '',
+          bookName: note.bookName ?? '',
+          chapter: note.chapter ?? null,
+          verse: note.verse ?? null,
+          quote: note.quote ?? '',
+          body: trimmed,
+        });
+        const mapped = noteFromServer(updated);
+        setNotes((prev) => prev.map((n) => (n.id === mapped.id ? mapped : n)));
+        return;
+      }
 
-    const created = await scriptureService.createNote(reference, trimmed);
-    const mapped = noteFromServer(created);
-    setNotes((prev) => [
-      {
-        ...mapped,
-        book: note.book,
-        bookName: note.bookName ?? mapped.bookName,
-        chapter: note.chapter ?? mapped.chapter,
-        verse: note.verse ?? mapped.verse,
+      const created = await scriptureService.createNote({
+        book: note.book ?? '',
+        bookName: note.bookName ?? '',
+        chapter: note.chapter ?? null,
+        verse: note.verse ?? null,
         quote: note.quote ?? '',
-      },
-      ...prev,
-    ]);
-  }, []);
+        body: trimmed,
+      });
+      setNotes((prev) => [noteFromServer(created), ...prev]);
+    },
+    [],
+  );
 
   const deleteNote = useCallback(async (id: string) => {
     await scriptureService.deleteNote(id);
     setNotes((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
-  const toggleSaved = useCallback((verse: Omit<SavedVerse, 'id' | 'savedAt'>) => {
-    setState((prev) => {
-      const id = savedId(verse.book, verse.chapter, verse.verse, verse.translation);
-      if (prev.saved.some((s) => s.id === id)) {
-        return { ...prev, saved: prev.saved.filter((s) => s.id !== id) };
-      }
-      return { ...prev, saved: [{ ...verse, id, savedAt: Date.now() }, ...prev.saved] };
-    });
+  const refreshSaved = useCallback(async () => {
+    setSavedLoading(true);
+    try {
+      const rows = await scriptureService.getSavedVerses();
+      setSaved(rows.map(savedFromServer));
+    } catch {
+      return;
+    } finally {
+      setSavedLoading(false);
+    }
   }, []);
 
-  const removeSaved = useCallback((id: string) => {
-    setState((prev) => ({ ...prev, saved: prev.saved.filter((s) => s.id !== id) }));
-  }, []);
+  const toggleSaved = useCallback(
+    async (verse: SavedVerseInput) => {
+      const existing = saved.find(
+        (s) =>
+          s.book === verse.book &&
+          s.chapter === verse.chapter &&
+          s.verse === verse.verse &&
+          s.translation === verse.translation,
+      );
+
+      if (existing) {
+        setSaved((prev) => prev.filter((s) => s.id !== existing.id));
+      } else {
+        const optimistic: SavedVerse = {
+          ...verse,
+          id: `temp-${Date.now()}`,
+          savedAt: Date.now(),
+        };
+        setSaved((prev) => [optimistic, ...prev]);
+      }
+
+      try {
+        const result = await scriptureService.toggleSavedVerse(verse);
+        if (result.saved && result.entry) {
+          const mapped = savedFromServer(result.entry);
+          setSaved((prev) => [
+            mapped,
+            ...prev.filter((s) => !s.id.startsWith('temp-')),
+          ]);
+        } else {
+          setSaved((prev) => prev.filter((s) => !s.id.startsWith('temp-')));
+        }
+      } catch {
+        await refreshSaved();
+      }
+    },
+    [saved, refreshSaved],
+  );
+
+  const removeSaved = useCallback(
+    async (id: string) => {
+      setSaved((prev) => prev.filter((s) => s.id !== id));
+      try {
+        await scriptureService.deleteSavedVerse(id);
+      } catch {
+        await refreshSaved();
+      }
+    },
+    [refreshSaved],
+  );
+
+  const isSaved = useCallback(
+    (book: string, chapter: number, verse: number, translation: string) =>
+      saved.some(
+        (s) =>
+          s.book === book &&
+          s.chapter === chapter &&
+          s.verse === verse &&
+          s.translation === translation,
+      ),
+    [saved],
+  );
 
   const setLastRead = useCallback((value: LastRead) => {
     setState((prev) => ({ ...prev, lastRead: value }));
@@ -233,13 +321,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, planStart: dayKey() }));
   }, []);
 
-  const isSaved = useCallback(
-    (book: string, chapter: number, verse: number, translation: string) =>
-      state.saved.some((s) => s.id === savedId(book, chapter, verse, translation)),
-    [state.saved],
+  const streak = useMemo(
+    () => computeStreak(state.readDays),
+    [state.readDays],
   );
-
-  const streak = useMemo(() => computeStreak(state.readDays), [state.readDays]);
 
   const value = useMemo<LibraryContextValue>(
     () => ({
@@ -251,6 +336,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       refreshNotes,
       saveNote,
       deleteNote,
+      saved,
+      savedLoading,
+      refreshSaved,
       toggleSaved,
       removeSaved,
       isSaved,
@@ -267,6 +355,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       refreshNotes,
       saveNote,
       deleteNote,
+      saved,
+      savedLoading,
+      refreshSaved,
       toggleSaved,
       removeSaved,
       isSaved,
@@ -276,7 +367,9 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;
+  return (
+    <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>
+  );
 }
 
 export function useLibrary(): LibraryContextValue {

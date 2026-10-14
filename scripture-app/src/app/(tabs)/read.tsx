@@ -1,6 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
-  ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -11,9 +16,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChapterPicker } from '@/components/core/ChapterPicker';
-import { NoteDraft, NoteEditor } from '@/components/core/NoteEditor';
-import { VersionSheet } from '@/components/core/VersionSheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SheetManager } from 'react-native-actions-sheet';
 import { Screen } from '@/components/core/ui';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useLibrary } from '@/hooks/use-library';
@@ -25,6 +29,9 @@ import { ChapterBlock, VerseBlock, chapterBlocks } from '@/lib/bible/text';
 import { ReadingSkeleton } from '@/components/core/ReadingSkeleton';
 
 type Paragraph = { key: string; heading?: string; verses: VerseBlock[] };
+
+const TAB_BAR_HEIGHT = 62;
+const TAB_BAR_GAP = 12;
 
 function toParagraphs(blocks: ChapterBlock[]): Paragraph[] {
   const out: Paragraph[] = [];
@@ -46,26 +53,36 @@ function toParagraphs(blocks: ChapterBlock[]): Paragraph[] {
 export default function ReadScreen() {
   const t = useAppTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ book?: string; chapter?: string; verse?: string }>();
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{
+    book?: string;
+    chapter?: string;
+    verse?: string;
+  }>();
   const { settings, update } = useSettings();
-  const { lastRead, setLastRead, markReadToday, toggleSaved, isSaved } = useLibrary();
+  const { lastRead, setLastRead, markReadToday, toggleSaved, isSaved } =
+    useLibrary();
   const { label: versionLabel } = useTranslations();
 
   const [book, setBook] = useState<string>(() =>
     params.book && BOOK_MAP[params.book] ? params.book : lastRead?.book ?? 'JHN',
   );
   const [chapter, setChapter] = useState<number>(() =>
-    params.book && BOOK_MAP[params.book] ? Number(params.chapter) || 1 : lastRead?.chapter ?? 3,
+    params.book && BOOK_MAP[params.book]
+      ? Number(params.chapter) || 1
+      : lastRead?.chapter ?? 3,
   );
-  const [highlight, setHighlight] = useState<number | null>(params.verse ? Number(params.verse) : null);
+  const [highlight, setHighlight] = useState<number | null>(
+    params.verse ? Number(params.verse) : null,
+  );
   const [selected, setSelected] = useState<VerseBlock | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [translationOpen, setTranslationOpen] = useState(false);
-  const [draft, setDraft] = useState<NoteDraft>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const lastWrite = useRef(0);
+
+  const tabBarSpace =
+    Math.max(insets.bottom, TAB_BAR_GAP) + TAB_BAR_HEIGHT + 16;
+  const bottomBarSpace = Math.max(insets.bottom, 12) + 76;
 
   useEffect(() => {
     if (params.book && BOOK_MAP[params.book]) {
@@ -78,9 +95,16 @@ export default function ReadScreen() {
   }, [params.book, params.chapter, params.verse]);
 
   const bookInfo = BOOK_MAP[book] ?? BOOK_MAP.JHN;
-  const { data, isLoading, isError, refetch } = useScripture(settings.translation, book, String(chapter));
+  const { data, isLoading, isError, refetch } = useScripture(
+    settings.translation,
+    book,
+    String(chapter),
+  );
 
-  const paragraphs = useMemo(() => toParagraphs(chapterBlocks(data?.chapterContent ?? [])), [data]);
+  const paragraphs = useMemo(
+    () => toParagraphs(chapterBlocks(data?.chapterContent ?? [])),
+    [data],
+  );
 
   useEffect(() => {
     if (!data) return;
@@ -90,12 +114,16 @@ export default function ReadScreen() {
 
   const report = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>, force: boolean) => {
-      const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+      const { contentOffset, layoutMeasurement, contentSize } =
+        event.nativeEvent;
       if (contentSize.height <= 0) return;
       const now = Date.now();
       if (!force && now - lastWrite.current < 1200) return;
       lastWrite.current = now;
-      const progress = Math.min(1, (contentOffset.y + layoutMeasurement.height) / contentSize.height);
+      const progress = Math.min(
+        1,
+        (contentOffset.y + layoutMeasurement.height) / contentSize.height,
+      );
       setLastRead({ book, chapter, progress });
     },
     [book, chapter, setLastRead],
@@ -114,25 +142,53 @@ export default function ReadScreen() {
   const next = stepChapter(book, chapter, 1);
 
   const activeVerse = selected?.number ?? highlight;
-  const saved = selected ? isSaved(book, chapter, selected.number, settings.translation) : false;
+  const saved = selected
+    ? isSaved(book, chapter, selected.number, settings.translation)
+    : false;
+
+  const openChapterPicker = () => {
+    SheetManager.show('chapter-picker', {
+      payload: {
+        currentBook: book,
+        currentChapter: chapter,
+        onSelect: (b, c) => go({ book: b, chapter: c }),
+      },
+    });
+  };
+
+  const openVersionSheet = () => {
+    SheetManager.show('version-sheet', {
+      payload: {
+        value: settings.translation,
+        onSelect: (value) => update({ translation: value }),
+      },
+    });
+  };
 
   const reflect = () => {
     if (!selected) return;
-    setDraft({
-      book,
-      bookName: bookInfo.name,
-      chapter,
-      verse: selected.number,
-      quote: selected.text,
-      body: '',
+    SheetManager.show('note-editor', {
+      payload: {
+        draft: {
+          book,
+          bookName: bookInfo.name,
+          chapter,
+          verse: selected.number,
+          quote: selected.text,
+          body: '',
+        },
+      },
     });
-    setEditorOpen(true);
   };
 
   const share = () => {
     if (!selected) return;
     Share.share({
-      message: `“${selected.text}” — ${formatRef(bookInfo.name, chapter, selected.number)} (${versionLabel(settings.translation)})`,
+      message: `“${selected.text}” — ${formatRef(
+        bookInfo.name,
+        chapter,
+        selected.number,
+      )} (${versionLabel(settings.translation)})`,
     });
   };
 
@@ -163,19 +219,37 @@ export default function ReadScreen() {
         }}
       >
         <Pressable
-          onPress={() => setPickerOpen(true)}
+          onPress={openChapterPicker}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
         >
-          <Text style={{ fontFamily: t.display.medium, fontSize: 18, color: t.c.text }}>
+          <Text
+            style={{
+              fontFamily: t.display.medium,
+              fontSize: 18,
+              color: t.c.text,
+            }}
+          >
             {bookInfo.name} {chapter}
           </Text>
           <Ionicons name="chevron-down" size={14} color={t.c.muted} />
         </Pressable>
         <Pressable
-          onPress={() => setTranslationOpen(true)}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 16 }}
+          onPress={openVersionSheet}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            marginRight: 16,
+          }}
         >
-          <Text style={{ fontFamily: t.ui.semibold, fontSize: 12, color: t.c.muted, letterSpacing: 0.5 }}>
+          <Text
+            style={{
+              fontFamily: t.ui.semibold,
+              fontSize: 12,
+              color: t.c.muted,
+              letterSpacing: 0.5,
+            }}
+          >
             {versionLabel(settings.translation)}
           </Text>
           <Ionicons name="chevron-down" size={14} color={t.c.muted} />
@@ -191,23 +265,55 @@ export default function ReadScreen() {
         onScroll={(e) => report(e, false)}
         onScrollEndDrag={(e) => report(e, true)}
         onMomentumScrollEnd={(e) => report(e, true)}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: selected ? 120 : 40 }}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingBottom: selected ? bottomBarSpace : tabBarSpace,
+        }}
       >
-        <View style={{ alignItems: 'center', paddingTop: 28, paddingBottom: 20 }}>
-          <Text style={{ fontFamily: t.ui.medium, fontSize: 11, letterSpacing: 2, color: t.c.muted }}>
+        <View
+          style={{ alignItems: 'center', paddingTop: 28, paddingBottom: 20 }}
+        >
+          <Text
+            style={{
+              fontFamily: t.ui.medium,
+              fontSize: 11,
+              letterSpacing: 2,
+              color: t.c.muted,
+            }}
+          >
             {bookInfo.name.toUpperCase()}
           </Text>
-          <Text style={{ fontFamily: t.display.regular, fontSize: 60, lineHeight: 70, color: t.accent.main }}>
+          <Text
+            style={{
+              fontFamily: t.display.regular,
+              fontSize: 60,
+              lineHeight: 70,
+              color: t.accent.main,
+            }}
+          >
             {chapter}
           </Text>
-          <View style={{ width: 28, height: 2, backgroundColor: t.accent.main, marginTop: 4 }} />
+          <View
+            style={{
+              width: 28,
+              height: 2,
+              backgroundColor: t.accent.main,
+              marginTop: 4,
+            }}
+          />
         </View>
 
         {isLoading ? (
           <ReadingSkeleton />
         ) : isError ? (
           <View style={{ alignItems: 'center', marginTop: 48, gap: 14 }}>
-            <Text style={{ fontFamily: t.ui.regular, fontSize: 14, color: t.c.danger }}>
+            <Text
+              style={{
+                fontFamily: t.ui.regular,
+                fontSize: 14,
+                color: t.c.danger,
+              }}
+            >
               This chapter could not be loaded.
             </Text>
             <Pressable
@@ -219,7 +325,9 @@ export default function ReadScreen() {
                 backgroundColor: t.accent.main,
               }}
             >
-              <Text style={{ fontFamily: t.ui.semibold, color: t.accent.on }}>Try again</Text>
+              <Text style={{ fontFamily: t.ui.semibold, color: t.accent.on }}>
+                Try again
+              </Text>
             </Pressable>
           </View>
         ) : (
@@ -250,9 +358,15 @@ export default function ReadScreen() {
                   {para.verses.map((verse) => (
                     <Text
                       key={verse.key}
-                      onPress={() => setSelected(selected?.number === verse.number ? null : verse)}
+                      onPress={() =>
+                        setSelected(
+                          selected?.number === verse.number ? null : verse,
+                        )
+                      }
                       style={
-                        activeVerse === verse.number ? { backgroundColor: t.accent.soft } : undefined
+                        activeVerse === verse.number
+                          ? { backgroundColor: t.accent.soft }
+                          : undefined
                       }
                     >
                       {verse.number > 1 ? (
@@ -269,7 +383,11 @@ export default function ReadScreen() {
                       {verse.segments.map((segment, index) => (
                         <Text
                           key={index}
-                          style={segment.jesus && settings.redLetters ? { color: t.c.jesus } : undefined}
+                          style={
+                            segment.jesus && settings.redLetters
+                              ? { color: t.c.jesus }
+                              : undefined
+                          }
                         >
                           {segment.text}
                         </Text>
@@ -283,7 +401,13 @@ export default function ReadScreen() {
         )}
 
         {!isLoading && !isError ? (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 24 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              marginTop: 24,
+            }}
+          >
             <Pressable
               disabled={!prev}
               onPress={() => go(prev)}
@@ -301,7 +425,15 @@ export default function ReadScreen() {
               }}
             >
               <Ionicons name="chevron-back" size={16} color={t.c.text} />
-              <Text style={{ fontFamily: t.ui.medium, fontSize: 13, color: t.c.text }}>Previous</Text>
+              <Text
+                style={{
+                  fontFamily: t.ui.medium,
+                  fontSize: 13,
+                  color: t.c.text,
+                }}
+              >
+                Previous
+              </Text>
             </Pressable>
             <Pressable
               disabled={!next}
@@ -317,7 +449,15 @@ export default function ReadScreen() {
                 opacity: next ? 1 : 0.35,
               }}
             >
-              <Text style={{ fontFamily: t.ui.semibold, fontSize: 13, color: t.accent.on }}>Next</Text>
+              <Text
+                style={{
+                  fontFamily: t.ui.semibold,
+                  fontSize: 13,
+                  color: t.accent.on,
+                }}
+              >
+                Next
+              </Text>
               <Ionicons name="chevron-forward" size={16} color={t.accent.on} />
             </Pressable>
           </View>
@@ -330,7 +470,7 @@ export default function ReadScreen() {
             position: 'absolute',
             left: 16,
             right: 16,
-            bottom: 16,
+            bottom: Math.max(insets.bottom, TAB_BAR_GAP) + TAB_BAR_HEIGHT + 12,
             backgroundColor: t.c.sheet,
             borderRadius: 18,
             borderWidth: 1,
@@ -346,7 +486,14 @@ export default function ReadScreen() {
             elevation: 6,
           }}
         >
-          <Text style={{ flex: 1, fontFamily: t.ui.semibold, fontSize: 13, color: t.c.text }}>
+          <Text
+            style={{
+              flex: 1,
+              fontFamily: t.ui.semibold,
+              fontSize: 13,
+              color: t.c.text,
+            }}
+          >
             {formatRef(bookInfo.name, chapter, selected.number)}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
@@ -369,23 +516,6 @@ export default function ReadScreen() {
           </View>
         </View>
       ) : null}
-
-      <ChapterPicker
-        visible={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        currentBook={book}
-        currentChapter={chapter}
-        onSelect={(b, c) => go({ book: b, chapter: c })}
-      />
-
-      <VersionSheet
-        visible={translationOpen}
-        onClose={() => setTranslationOpen(false)}
-        value={settings.translation}
-        onSelect={(value) => update({ translation: value })}
-      />
-
-      <NoteEditor visible={editorOpen} draft={draft} onClose={() => setEditorOpen(false)} />
     </Screen>
   );
 }

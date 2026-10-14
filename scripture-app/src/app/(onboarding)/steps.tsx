@@ -4,23 +4,27 @@ import { router } from "expo-router";
 import { useThemePreference } from "@/hooks/use-theme-preference";
 import { lightPalette, darkPalette } from '@/lib/theme/colors';
 import { Button } from "@/components/ui/button";
+import { Mascot, MascotPose } from "@/components/mascot/mascot";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 
-const SLIDES = [
+const SLIDES: { verse: string; ref: string; title: string; pose: MascotPose }[] = [
   {
     verse: "Thy word is a lamp unto my feet, and a light unto my path.",
     ref: "Psalm 119:105",
     title: "Read with intention",
+    pose: "read",
   },
   {
     verse: "Be still, and know that I am God.",
     ref: "Psalm 46:10",
     title: "Study in stillness",
+    pose: "still",
   },
   {
     verse: "Let the word of Christ dwell in you richly.",
     ref: "Colossians 3:16",
     title: "Carry it with you",
+    pose: "lantern",
   },
 ];
 
@@ -120,6 +124,9 @@ export default function OnboardingSteps() {
           style={{ opacity: fadeAnim, transform: [{ translateY: slideYAnim }] }}
           className="w-full items-center"
         >
+          <View className="mb-8">
+            <Mascot pose={currentSlide.pose} size={170} />
+          </View>
           <Text className="text-2xl text-center italic font-serif" style={{ color: palette.text.primary, lineHeight: 36 }}>
             “{currentSlide.verse}”
           </Text>

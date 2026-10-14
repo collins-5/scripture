@@ -2,10 +2,12 @@ import React, { useRef, useState } from 'react';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '@/components/core/ui';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useLibrary } from '@/hooks/use-library';
 import { formatRef } from '@/lib/bible/meta';
+import { isEmptyHtml } from '@/lib/utils/html';
 import {
   RichTextEditor,
   RichTextEditorRef,
@@ -16,6 +18,7 @@ const RichTextEditorMemo = React.memo(RichTextEditor);
 export default function CreateNotePage() {
   const t = useAppTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     book?: string;
     bookName?: string;
@@ -37,20 +40,16 @@ export default function CreateNotePage() {
   const reference =
     bookName && chapter ? formatRef(bookName, chapter, verse) : null;
 
+  const bottomPad = Math.max(insets.bottom, 12);
+
   const submit = async () => {
-    console.log('[Submit] A: pressed, saving:', saving, 'ref:', !!editorRef.current);
     if (saving || !editorRef.current) return;
 
     try {
-      console.log('[Submit] B: about to getHTML');
       const html = await editorRef.current.getHTML();
-      console.log('[Submit] C: html:', JSON.stringify(html));
-
       const trimmed = html?.trim();
-      console.log('[Submit] D: trimmed:', JSON.stringify(trimmed));
 
-      if (!trimmed || trimmed === '<p></p>') {
-        console.log('[Submit] E: empty, returning early');
+      if (isEmptyHtml(trimmed)) {
         Alert.alert('Nothing to save', 'Write something first.');
         return;
       }
@@ -66,7 +65,6 @@ export default function CreateNotePage() {
       });
       router.back();
     } catch (error: any) {
-      console.log('[Submit] error:', error);
       Alert.alert('Could not save', error?.message ?? 'Please try again.');
     } finally {
       setSaving(false);
@@ -107,7 +105,8 @@ export default function CreateNotePage() {
               className="mt-1.5"
               style={[
                 t.reading.italic,
-                { fontSize: 14, lineHeight: 21, color: t.c.muted },
+                { fontSize: 14, lineHeight: 21 },
+                { color: t.c.muted },
               ]}
             >
               {quote}
@@ -118,13 +117,17 @@ export default function CreateNotePage() {
 
       <RichTextEditorMemo
         ref={editorRef}
-        initialContent=""
+        initialContent="<p></p>"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       />
 
       <View
-        className="flex-row px-5 py-3 border-t"
-        style={{ borderTopColor: t.c.border, backgroundColor: t.c.bg }}
+        className="flex-row px-5 pt-3 border-t"
+        style={{
+          borderTopColor: t.c.border,
+          backgroundColor: t.c.bg,
+          paddingBottom: bottomPad,
+        }}
       >
         <Pressable
           onPress={submit}

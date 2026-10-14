@@ -9,10 +9,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '@/components/core/ui';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useLibrary } from '@/hooks/use-library';
 import { formatRef } from '@/lib/bible/meta';
+import { isEmptyHtml } from '@/lib/utils/html';
 import {
   RichTextEditor,
   RichTextEditorRef,
@@ -21,13 +23,13 @@ import {
 export default function NotePage() {
   const t = useAppTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id?: string }>();
   const isNew = !params.id || params.id === 'new';
 
   const { notes, notesLoading, refreshNotes, saveNote, deleteNote } = useLibrary();
   const existing = isNew ? null : notes.find((n) => n.id === params.id) ?? null;
 
-  const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -40,7 +42,6 @@ export default function NotePage() {
       return;
     }
     if (existing) {
-      setBody(existing.body);
       setNotFound(false);
       setLoaded(true);
       return;
@@ -63,6 +64,8 @@ export default function NotePage() {
       ? formatRef(existing.bookName, existing.chapter, existing.verse)
       : null;
 
+  const bottomPad = Math.max(insets.bottom, 12);
+
   const submit = async () => {
     if (saving || !editorRef.current) return;
 
@@ -70,7 +73,7 @@ export default function NotePage() {
       const html = await editorRef.current.getHTML();
       const trimmed = html?.trim();
 
-      if (!trimmed || trimmed === '<p></p>') return;
+      if (isEmptyHtml(trimmed)) return;
 
       setSaving(true);
       await saveNote({ ...(existing ?? {}), body: trimmed });
@@ -118,7 +121,10 @@ export default function NotePage() {
   if (notFound) {
     return (
       <Screen>
-        <View className="flex-1 items-center justify-center px-8">
+        <View
+          className="flex-1 items-center justify-center px-8"
+          style={{ paddingBottom: bottomPad }}
+        >
           <Text
             className="text-base text-center"
             style={{ fontFamily: t.ui.regular, color: t.c.muted }}
@@ -181,7 +187,8 @@ export default function NotePage() {
               className="mt-1.5"
               style={[
                 t.reading.italic,
-                { fontSize: 14, lineHeight: 21, color: t.c.muted },
+                { fontSize: 14, lineHeight: 21 },
+                { color: t.c.muted },
               ]}
             >
               {existing.quote}
@@ -192,13 +199,17 @@ export default function NotePage() {
 
       <RichTextEditor
         ref={editorRef}
-        initialContent={existing?.body ?? ''}
+        initialContent={existing?.body ?? '<p></p>'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       />
 
       <View
-        className="flex-row gap-2.5 px-5 py-3 border-t"
-        style={{ borderTopColor: t.c.border, backgroundColor: t.c.bg }}
+        className="flex-row gap-2.5 px-5 pt-3 border-t"
+        style={{
+          borderTopColor: t.c.border,
+          backgroundColor: t.c.bg,
+          paddingBottom: bottomPad,
+        }}
       >
         <Pressable
           onPress={submit}

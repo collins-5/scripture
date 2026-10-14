@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StatusBar } from 'react-native';
 import { router } from 'expo-router';
 import { Button } from '@/components/ui/button';
+import { Mascot } from '@/components/mascot/mascot';
 import { useThemePreference } from '@/hooks/use-theme-preference';
 import { lightPalette, darkPalette } from '@/lib/theme/colors';
-import Mascot from '@/components/mascot/mascot';
 
 export default function OnboardingIndex() {
   const { isDark } = useThemePreference();
@@ -12,13 +12,13 @@ export default function OnboardingIndex() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: palette.surface.page }}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       <View className="flex-1 justify-center items-center px-6">
         <View className="items-center mb-8">
-          
-          {/* Your integrated, auto-playing vector flame mascot component */}
-          <Mascot size={240} />
+          <View className="mb-4">
+            <Mascot pose="wave" size={210} />
+          </View>
 
           <Text className="text-3xl font-bold text-center" style={{ color: palette.text.primary }}>
             Welcome to Scripture
@@ -38,10 +38,7 @@ export default function OnboardingIndex() {
           rounded="xl"
         />
 
-        <TouchableOpacity
-          onPress={() => router.push('/(auth)/login')}
-          className="mt-4"
-        >
+        <TouchableOpacity onPress={() => router.push('/(auth)/login')} className="mt-4">
           <Text className="text-sm" style={{ color: palette.text.muted }}>
             Already have an account? <Text style={{ color: palette.brand.primary, fontWeight: '600' }}>Sign In</Text>
           </Text>

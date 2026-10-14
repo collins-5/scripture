@@ -13,7 +13,7 @@ import { verseOfTheDay } from '@/lib/daily-verse';
 import { PLAN_DAYS, describeReading, planDay, readingForDay } from '@/lib/plan';
 import { Card, IconCircle, ProgressRing, Screen } from '@/components/core/ui';
 import { useDoubleBackExit } from '@/hooks/useDoubleBackExit';
-import Mascot from '@/components/mascot/mascot';
+import { Mascot } from '@/components/mascot/mascot';
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -103,6 +103,14 @@ export default function HomeScreen() {
     }
   };
 
+  const actions = [
+    { label: 'Read', icon: 'book-outline' as const, onPress: () => router.navigate('/read') },
+    { label: 'Search', icon: 'search-outline' as const, onPress: () => router.navigate('/search') },
+    { label: 'Notes', icon: 'journal-outline' as const, onPress: () => router.navigate('/notes') },
+    { label: 'Saved', icon: 'bookmark-outline' as const, onPress: () => router.push('/saved-verses') },
+    { label: 'Plans', icon: 'list-outline' as const, onPress: () => router.push('/reading-plans') },
+  ];
+
   return (
     <Screen>
       <ScrollView
@@ -159,7 +167,7 @@ export default function HomeScreen() {
           </View>
 
           <View className="mb-1">
-            <Mascot size={72} />
+            <Mascot pose="wave" size={100} />
           </View>
         </View>
 
@@ -289,22 +297,20 @@ export default function HomeScreen() {
         </Card>
 
         <View className="flex-row justify-between mt-7 px-1">
-          {[
-            { label: 'Read', icon: 'book-outline', onPress: () => router.push('/read') },
-            { label: 'Search', icon: 'search-outline', onPress: () => router.push('/search') },
-            { label: 'Notes', icon: 'journal-outline', onPress: () => router.push('/notes') },
-            { label: 'Saved', icon: 'bookmark-outline', onPress: () => router.push('/saved-verses') },
-            { label: 'Plans', icon: 'list-outline', onPress: () => router.push('/reading-plans') },
-          ].map((action) => (
-            <View key={action.label} className="items-center gap-2">
-              <IconCircle name={action.icon as any} size={52} onPress={action.onPress} />
+          {actions.map((action) => (
+            <Pressable
+              key={action.label}
+              onPress={action.onPress}
+              className="items-center gap-2"
+            >
+              <IconCircle name={action.icon} size={52} />
               <Text
                 className="text-[11px]"
                 style={{ fontFamily: t.ui.medium, color: t.c.muted }}
               >
                 {action.label}
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
 

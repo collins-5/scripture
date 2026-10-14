@@ -37,6 +37,9 @@ export type IconNames = Extract<
   | "journal"
   | "alert-circle-outline"
   | "home-heart"
+  | "checkbox"
+  | "square-outline"
+  | "check"
 >;
 
 type ImageIconProps = {
