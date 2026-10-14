@@ -42,5 +42,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, message: 'MONGO_URI missing.' });
   }
   await connectDB();
-  return app(req, res);
+  app(req, res);
 }
