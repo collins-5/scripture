@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { Button } from '@/components/ui/button';
 import { useThemePreference } from '@/hooks/use-theme-preference';
 import { lightPalette, darkPalette } from '@/lib/theme/colors';
-import Icon from '@/components/ui/icon';
+import Mascot from '@/components/mascot/mascot';
 
 export default function OnboardingIndex() {
   const { isDark } = useThemePreference();
@@ -16,9 +16,9 @@ export default function OnboardingIndex() {
 
       <View className="flex-1 justify-center items-center px-6">
         <View className="items-center mb-8">
-          <View className="p-6 rounded-full mb-6" style={{ backgroundColor: palette.brand.primary + '1A' }}>
-            <Icon name="book-open-variant" size={80} color={palette.brand.primary} />
-          </View>
+          
+          {/* Your integrated, auto-playing vector flame mascot component */}
+          <Mascot size={240} />
 
           <Text className="text-3xl font-bold text-center" style={{ color: palette.text.primary }}>
             Welcome to Scripture

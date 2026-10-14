@@ -1,126 +1,155 @@
-import React, { useMemo, useState } from 'react';
-import { FlatList, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, EmptyState, IconCircle, Screen } from '@/components/core/ui';
+import { Card, EmptyState, Screen } from '@/components/core/ui';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Note, useLibrary } from '@/hooks/use-library';
 import { formatRef } from '@/lib/bible/meta';
-import { NoteDraft, NoteEditor } from '@/components/core/NoteEditor';
+import { useRouter } from 'expo-router';
 
 export default function NotesScreen() {
   const t = useAppTheme();
-  const { notes } = useLibrary();
+  const router = useRouter();
+  const { notes, notesLoading, refreshNotes } = useLibrary();
   const [query, setQuery] = useState('');
-  const [draft, setDraft] = useState<NoteDraft>(null);
-  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    console.log('[Notes] MOUNT');
+    refreshNotes();
+  }, [refreshNotes]);
+
+  useEffect(() => {
+    console.log('[Notes] notes updated', { count: notes.length });
+  }, [notes]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const sorted = [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
     if (!q) return sorted;
     return sorted.filter((n) =>
-      [n.body, n.quote ?? '', n.bookName ?? ''].some((field) => field.toLowerCase().includes(q)),
+      [n.body, n.quote ?? '', n.bookName ?? ''].some((field) =>
+        field.toLowerCase().includes(q),
+      ),
     );
   }, [notes, query]);
 
   const edit = (note: Note) => {
-    setDraft(note);
-    setOpen(true);
+    console.log('[Notes] tap edit', { id: note.id });
+    router.push({ pathname: '/note/[id]', params: { id: String(note.id) } });
   };
 
   const create = () => {
-    setDraft(null);
-    setOpen(true);
+    console.log('[Notes] tap create');
+    router.push('/note/create');
   };
 
   return (
     <Screen>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 20,
-          paddingTop: 20,
-        }}
-      >
-        <Text style={{ fontFamily: t.display.medium, fontSize: 32, color: t.c.text }}>Notes</Text>
-        <IconCircle name="add" size={44} filled onPress={create} />
+      <View className="flex-row items-center justify-between px-5 pt-5 pb-2">
+        <Text
+          className="text-3xl"
+          style={{ fontFamily: t.display.medium, color: t.c.text }}
+        >
+          Notes
+        </Text>
+        <Pressable
+          onPress={create}
+          hitSlop={8}
+          className="w-11 h-11 rounded-full items-center justify-center"
+          style={{ backgroundColor: t.accent.main }}
+        >
+          <Ionicons name="add" size={22} color={t.accent.on} />
+        </Pressable>
       </View>
 
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-          marginHorizontal: 20,
-          marginTop: 16,
-          paddingHorizontal: 14,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: t.c.border,
-          backgroundColor: t.c.card,
-        }}
-      >
-        <Ionicons name="search-outline" size={16} color={t.c.faint} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search notes…"
-          placeholderTextColor={t.c.placeholder}
-          style={{ flex: 1, paddingVertical: 13, fontFamily: t.ui.regular, fontSize: 15, color: t.c.text }}
-        />
+      <View className="mx-5 mt-4">
+        <View
+          className="flex-row items-center px-4 rounded-2xl border"
+          style={{
+            height: 48,
+            borderColor: t.c.border,
+            backgroundColor: t.c.card,
+          }}
+        >
+          <Ionicons name="search-outline" size={18} color={t.c.faint} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search notes…"
+            placeholderTextColor={t.c.placeholder}
+            className="flex-1 ml-2 text-[15px]"
+            style={{
+              fontFamily: t.ui.regular,
+              color: t.c.text,
+              paddingVertical: 0,
+            }}
+          />
+        </View>
       </View>
 
       <FlatList
         data={filtered}
         keyExtractor={(n) => n.id}
-        contentContainerStyle={{ padding: 20, gap: 12, flexGrow: 1 }}
+        contentContainerClassName="p-5 gap-3"
+        style={{ flexGrow: 1 }}
         ListEmptyComponent={
-          notes.length === 0 ? (
+          notesLoading ? (
+            <EmptyState icon="hourglass-outline" title="Loading reflections…" />
+          ) : notes.length === 0 ? (
             <EmptyState
               icon="journal-outline"
               title="No reflections yet"
-              body="Tap a verse while reading and choose “Reflect” — or start one here."
+              body="Tap the + button to start one, or tap a verse while reading."
             />
           ) : (
             <EmptyState icon="search-outline" title="No matching notes" />
           )
         }
         renderItem={({ item }) => (
-          <Card onPress={() => edit(item)} style={{ padding: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontFamily: t.ui.semibold, fontSize: 12, color: t.accent.main }}>
+          <Card onPress={() => edit(item)} className="p-4">
+            <View className="flex-row justify-between items-center">
+              <Text
+                className="text-xs font-semibold"
+                style={{ fontFamily: t.ui.semibold, color: t.accent.main }}
+              >
                 {item.bookName && item.chapter
                   ? formatRef(item.bookName, item.chapter, item.verse)
                   : 'Reflection'}
               </Text>
-              <Text style={{ fontFamily: t.ui.regular, fontSize: 11, color: t.c.faint }}>
-                {new Date(item.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              <Text
+                className="text-[11px]"
+                style={{ fontFamily: t.ui.regular, color: t.c.faint }}
+              >
+                {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })}
               </Text>
             </View>
             {item.quote ? (
               <Text
                 numberOfLines={2}
-                style={{
-                  ...t.reading.italic,
-                  fontSize: t.reading.size(14),
-                  lineHeight: t.reading.lh(14),
-                  color: t.c.muted,
-                  marginTop: 8,
-                }}
+                className="mt-2"
+                style={[
+                  t.reading.italic,
+                  {
+                    fontSize: t.reading.size(14),
+                    lineHeight: t.reading.lh(14),
+                    color: t.c.muted,
+                  },
+                ]}
               >
                 {item.quote}
               </Text>
             ) : null}
             <Text
               numberOfLines={4}
+              className="mt-2"
               style={{
                 fontFamily: t.reading.regular,
                 fontSize: t.reading.size(15),
                 lineHeight: t.reading.lh(15),
                 color: t.c.body,
-                marginTop: 8,
               }}
             >
               {item.body}
@@ -128,8 +157,6 @@ export default function NotesScreen() {
           </Card>
         )}
       />
-
-      <NoteEditor visible={open} draft={draft} onClose={() => setOpen(false)} />
     </Screen>
   );
 }

@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
+import SessionLoading from './session-loading';
 
 export function SessionGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -29,11 +30,11 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!allReady) return;
 
-    const group = segments[0];
+    const group = segments[0] as string | undefined;
     const inAuthGroup = group === '(auth)';
     const inOnboardingGroup = group === '(onboarding)';
-    const inTabs = group === '(tabs)';
 
+    // 1. Onboarding gate — highest priority
     if (!seenOnboarding) {
       if (!inOnboardingGroup) {
         router.replace('/(onboarding)');
@@ -41,17 +42,21 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (status === 'authenticated') {
-      if (!inTabs) {
-        router.replace('/(tabs)');
-      }
-      return;
-    }
-
+    // 2. Unauthenticated gate — must reach auth
     if (status === 'unauthenticated') {
       if (!inAuthGroup) {
         router.replace('/(auth)/login');
       }
+      return;
+    }
+
+    // 3. Authenticated — block only the auth/onboarding groups,
+    //    allow everything else (tabs, note, reading-fonts, saved-verses, ...)
+    if (status === 'authenticated') {
+      if (inAuthGroup || inOnboardingGroup) {
+        router.replace('/(tabs)');
+      }
+      return;
     }
   }, [allReady, seenOnboarding, status, segments, router]);
 
@@ -65,7 +70,7 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
           backgroundColor: t.c.bg,
         }}
       >
-        <ActivityIndicator size="large" color={t.accent.main} />
+        <SessionLoading />
       </View>
     );
   }
