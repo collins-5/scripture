@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron/daily-verse",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import { User, Note, SavedVerse } from '../models/schemas.js';
 import { verifyToken } from '../middleware/auth.js';
+import { sendDailyVerse } from '../jobs/daily-verse.js';
 
 const router = express.Router();
 
@@ -314,13 +315,14 @@ router.post('/saved-verses/toggle', verifyToken, async (req, res) => {
 
 router.post('/send-daily-reflection', async (req, res) => {
   try {
-    const { title, body } = req.body;
+    const { title, body, book, chapter, verse } = req.body;
     const users = await User.find({ pushToken: { $ne: '' } });
     const tokens = users.map((u) => u.pushToken).filter(Boolean);
 
     if (tokens.length === 0) {
       return res.json({
         success: true,
+        sent: 0,
         message: 'No active push tokens found.',
       });
     }
@@ -330,16 +332,99 @@ router.post('/send-daily-reflection', async (req, res) => {
       sound: 'default',
       title: title || 'Daily Reflection',
       body: body || "Read today's scripture and reflect.",
+      data: book && chapter ? { book, chapter, verse } : {},
     }));
 
-    await axios.post('https://exp.host/--/api/v2/push/send', messages, {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const chunks = [];
+    for (let i = 0; i < messages.length; i += 100) {
+      chunks.push(messages.slice(i, i + 100));
+    }
 
-    return res.json({ success: true, message: 'Notifications broadcasted.' });
+    const tickets = [];
+    for (const chunk of chunks) {
+      const response = await axios.post(
+        'https://exp.host/--/api/v2/push/send',
+        chunk,
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+      const rows = response.data?.data ?? [];
+
+      await Promise.all(
+        rows.map(async (ticket, index) => {
+          if (
+            ticket.status === 'error' &&
+            ticket.details?.error === 'DeviceNotRegistered'
+          ) {
+            await User.updateOne(
+              { pushToken: chunk[index].to },
+              { pushToken: '' },
+            );
+          }
+        }),
+      );
+
+      tickets.push(...rows);
+    }
+
+    return res.json({
+      success: true,
+      sent: messages.length,
+      ok: tickets.filter((t) => t.status === 'ok').length,
+      failed: tickets.filter((t) => t.status === 'error').length,
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
+
+router.post('/send-test-push', verifyToken, async (req, res) => {
+  try {
+    const { title, body } = req.body ?? {};
+
+    const user = await User.findById(req.user.userId);
+    if (!user?.pushToken) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'No push token registered for this user.' });
+    }
+
+    const response = await axios.post(
+      'https://exp.host/--/api/v2/push/send',
+      [
+        {
+          to: user.pushToken,
+          sound: 'default',
+          title: title || 'Test notification',
+          body: body || 'If you see this, push is working.',
+          data: { book: 'JHN', chapter: 3, verse: 16 },
+        },
+      ],
+      { headers: { 'Content-Type': 'application/json' } },
+    );
+
+    return res.json({
+      success: true,
+      ticket: response.data?.data?.[0] ?? null,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+async function handleDailyVerseCron(req, res) {
+  const authHeader = req.headers.authorization;
+  const expected = `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!authHeader || authHeader !== expected) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  await sendDailyVerse();
+
+  return res.json({ success: true, message: 'Daily verse sent.' });
+}
+
+router.get('/cron/daily-verse', handleDailyVerseCron);
+router.post('/cron/daily-verse', handleDailyVerseCron);
 
 export default router;

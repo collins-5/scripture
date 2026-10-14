@@ -16,9 +16,10 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
-mongoose.connect(MONGO_URI)
+mongoose
+  .connect(MONGO_URI)
   .then(() => console.log('Cloud Database connected successfully.'))
-  .catch(err => console.error('Cloud Database connection error:', err));
+  .catch((err) => console.error('Cloud Database connection error:', err));
 
 app.use(cors());
 app.use(express.json());
