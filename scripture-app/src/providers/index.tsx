@@ -1,26 +1,27 @@
-import React from "react";
-import { View, StatusBar } from "react-native";
+import React from 'react';
+import { View, StatusBar } from 'react-native';
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
   type Theme,
-} from "expo-router/react-navigation";
-import { SheetProvider } from "react-native-actions-sheet";
-import * as SystemUI from "expo-system-ui";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+} from 'expo-router/react-navigation';
+import { SheetProvider } from 'react-native-actions-sheet';
+import * as SystemUI from 'expo-system-ui';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   ThemePreferenceProvider,
   useThemePreference,
-} from "@/hooks/use-theme-preference";
-import { SettingsProvider, useSettings } from "@/hooks/use-settings";
-import { LibraryProvider, useLibrary } from "@/hooks/use-library";
-import { useAppFonts } from "@/hooks/use-app-fonts";
-import { useThemeColors } from "@/hooks/useThemeColors";
-import "@/components/ui/bottom-sheets";
-import { SessionGate } from "@/components/core/session-gate";
+} from '@/hooks/use-theme-preference';
+import { SettingsProvider, useSettings } from '@/hooks/use-settings';
+import { LibraryProvider, useLibrary } from '@/hooks/use-library';
+import { useAppFonts } from '@/hooks/use-app-fonts';
+import { useThemeColors } from '@/hooks/useThemeColors';
+import { usePushNotifications } from '@/hooks/use-push-notifications';
+import '@/components/ui/bottom-sheets';
+import { SessionGate } from '@/components/core/session-gate';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,11 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function PushBridge() {
+  usePushNotifications();
+  return null;
+}
 
 function ReadyGate({ children }: { children: React.ReactNode }) {
   const { hasHydrated } = useThemePreference();
@@ -74,10 +80,11 @@ function ThemedProviders({ children }: { children: React.ReactNode }) {
             <StatusBar
               translucent
               backgroundColor="transparent"
-              barStyle={isDark ? "light-content" : "dark-content"}
+              barStyle={isDark ? 'light-content' : 'dark-content'}
             />
             <ReadyGate>
               <SessionGate>
+                <PushBridge />
                 {children}
               </SessionGate>
             </ReadyGate>
