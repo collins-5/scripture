@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, EmptyState, Screen, ScreenHeader } from '@/components/core/ui';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useLibrary } from '@/hooks/use-library';
@@ -11,34 +12,61 @@ import { formatRef } from '@/lib/bible/meta';
 export default function SavedVersesScreen() {
   const t = useAppTheme();
   const router = useRouter();
-  const { saved, removeSaved } = useLibrary();
+  const insets = useSafeAreaInsets();
+  const { saved, savedLoading, refreshSaved, removeSaved } = useLibrary();
   const { label: versionLabel } = useTranslations();
 
+  useEffect(() => {
+    refreshSaved();
+  }, [refreshSaved]);
+
+  const bottomPad = Math.max(insets.bottom, 16) + 16;
+
   return (
-    <Screen edges={['top', 'bottom']}>
+    <Screen edges={['top']}>
       <ScreenHeader title="Saved verses" onBack={() => router.back()} />
       <FlatList
         data={saved}
         keyExtractor={(s) => s.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 12, flexGrow: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 12,
+          paddingBottom: bottomPad,
+          gap: 12,
+          flexGrow: 1,
+        }}
         ListEmptyComponent={
-          <EmptyState
-            icon="bookmark-outline"
-            title="No saved verses yet"
-            body="Tap a verse while reading and choose the bookmark to keep it here."
-          />
+          savedLoading ? (
+            <EmptyState icon="hourglass-outline" title="Loading saved verses…" />
+          ) : (
+            <EmptyState
+              icon="bookmark-outline"
+              title="No saved verses yet"
+              body="Tap a verse while reading and choose the bookmark to keep it here."
+            />
+          )
         }
         renderItem={({ item }) => (
           <Card
             onPress={() =>
               router.push({
                 pathname: '/read',
-                params: { book: item.book, chapter: String(item.chapter), verse: String(item.verse) },
+                params: {
+                  book: item.book,
+                  chapter: String(item.chapter),
+                  verse: String(item.verse),
+                },
               })
             }
             style={{ padding: 16 }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
               <Text style={{ fontFamily: t.ui.semibold, fontSize: 12, color: t.accent.main }}>
                 {formatRef(item.bookName, item.chapter, item.verse)} · {versionLabel(item.translation)}
               </Text>

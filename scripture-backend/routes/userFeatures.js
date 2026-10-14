@@ -2,12 +2,10 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
-import { User, Note } from '../models/schemas.js';
+import { User, Note, SavedVerse } from '../models/schemas.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
-
-// ---------- helpers ----------
 
 function publicUser(user) {
   return {
@@ -15,7 +13,7 @@ function publicUser(user) {
     email: user.email,
     firstName: user.firstName ?? '',
     lastName: user.lastName ?? '',
-    name: user.name, // virtual from schema
+    name: user.name,
   };
 }
 
@@ -26,8 +24,6 @@ function signToken(user) {
     { expiresIn: '7d' },
   );
 }
-
-// ---------- auth ----------
 
 router.post('/auth/register', async (req, res) => {
   try {
@@ -119,12 +115,8 @@ router.get('/auth/me', verifyToken, async (req, res) => {
 });
 
 router.post('/auth/logout', verifyToken, async (req, res) => {
-  // Stateless JWT — nothing to invalidate server-side.
-  // The client deletes the token from SecureStore.
   return res.json({ success: true, message: 'Logged out.' });
 });
-
-// ---------- user ----------
 
 router.post('/user/push-token', verifyToken, async (req, res) => {
   try {
@@ -136,18 +128,38 @@ router.post('/user/push-token', verifyToken, async (req, res) => {
   }
 });
 
-// ---------- notes ----------
+router.get('/notes', verifyToken, async (req, res) => {
+  try {
+    const notes = await Note.find({ userId: req.user.userId }).sort({
+      updatedAt: -1,
+    });
+    return res.json({ success: true, notes });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 router.post('/notes', verifyToken, async (req, res) => {
   try {
-    const { verseReference, content } = req.body;
-    const newNote = new Note({
+    const { book, bookName, chapter, verse, quote, body } = req.body;
+
+    if (!body || !body.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Note body is required.' });
+    }
+
+    const note = await Note.create({
       userId: req.user.userId,
-      verseReference,
-      content,
+      book: book ?? '',
+      bookName: bookName ?? '',
+      chapter: chapter ?? null,
+      verse: verse ?? null,
+      quote: quote ?? '',
+      body: body.trim(),
     });
-    await newNote.save();
-    return res.status(201).json({ success: true, note: newNote });
+
+    return res.status(201).json({ success: true, note });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -155,15 +167,27 @@ router.post('/notes', verifyToken, async (req, res) => {
 
 router.put('/notes/:id', verifyToken, async (req, res) => {
   try {
-    const { verseReference, content } = req.body;
+    const { book, bookName, chapter, verse, quote, body } = req.body;
+
     const note = await Note.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.userId },
-      { verseReference, content },
+      {
+        book: book ?? '',
+        bookName: bookName ?? '',
+        chapter: chapter ?? null,
+        verse: verse ?? null,
+        quote: quote ?? '',
+        body: body ?? '',
+      },
       { new: true },
     );
+
     if (!note) {
-      return res.status(404).json({ success: false, message: 'Note not found.' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'Note not found.' });
     }
+
     return res.json({ success: true, note });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -176,27 +200,117 @@ router.delete('/notes/:id', verifyToken, async (req, res) => {
       _id: req.params.id,
       userId: req.user.userId,
     });
+
     if (!note) {
-      return res.status(404).json({ success: false, message: 'Note not found.' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'Note not found.' });
     }
+
     return res.json({ success: true });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-router.get('/notes', verifyToken, async (req, res) => {
+router.get('/saved-verses', verifyToken, async (req, res) => {
   try {
-    const notes = await Note.find({ userId: req.user.userId }).sort({
+    const saved = await SavedVerse.find({ userId: req.user.userId }).sort({
       createdAt: -1,
     });
-    return res.json({ success: true, notes });
+    return res.json({ success: true, saved });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// ---------- push ----------
+router.post('/saved-verses', verifyToken, async (req, res) => {
+  try {
+    const { book, bookName, chapter, verse, text, translation } = req.body;
+
+    if (!book || !bookName || !chapter || !verse || !text || !translation) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Missing required fields.' });
+    }
+
+    const entry = await SavedVerse.findOneAndUpdate(
+      { userId: req.user.userId, book, chapter, verse, translation },
+      {
+        userId: req.user.userId,
+        book,
+        bookName,
+        chapter,
+        verse,
+        text,
+        translation,
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+
+    return res.status(201).json({ success: true, saved: entry });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.delete('/saved-verses/:id', verifyToken, async (req, res) => {
+  try {
+    const entry = await SavedVerse.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user.userId,
+    });
+
+    if (!entry) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Saved verse not found.' });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/saved-verses/toggle', verifyToken, async (req, res) => {
+  try {
+    const { book, bookName, chapter, verse, text, translation } = req.body;
+
+    if (!book || !bookName || !chapter || !verse || !text || !translation) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Missing required fields.' });
+    }
+
+    const existing = await SavedVerse.findOne({
+      userId: req.user.userId,
+      book,
+      chapter,
+      verse,
+      translation,
+    });
+
+    if (existing) {
+      await existing.deleteOne();
+      return res.json({ success: true, saved: false });
+    }
+
+    const created = await SavedVerse.create({
+      userId: req.user.userId,
+      book,
+      bookName,
+      chapter,
+      verse,
+      text,
+      translation,
+    });
+
+    return res.status(201).json({ success: true, saved: true, entry: created });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 router.post('/send-daily-reflection', async (req, res) => {
   try {
