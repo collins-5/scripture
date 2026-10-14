@@ -1,64 +1,39 @@
-import { Drawer } from "expo-router/drawer";
+import { Stack } from "expo-router";
 import { AppProviders } from "@/providers";
-import { CustomDrawerContent } from "@/components/core/custom-drawer-content";
 import { useThemeColors } from "@/hooks/useThemeColors";
 
 import "../../global.css";
 
-function AppDrawer() {
-  const { brand, surface, text } = useThemeColors();
+function AppStack() {
+  const { surface, text } = useThemeColors();
 
   return (
-    <Drawer
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
+    <Stack
       screenOptions={{
         headerShown: false,
-        swipeEnabled: false,
-        drawerStyle: {
-          backgroundColor: surface.card,
-          width: 280,
-        },
-        drawerActiveBackgroundColor: brand.primary + "20",
-        drawerActiveTintColor: brand.primary,
-        drawerInactiveTintColor: text.muted,
+        headerStyle: { backgroundColor: surface.card },
+        headerTintColor: text.dark,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: surface.appGray },
+        animation: "slide_from_right",
       }}
     >
-      <Drawer.Screen
-        name="(onboarding)"
-        options={{ drawerItemStyle: { display: "none" }, headerShown: false }}
-      />
-      <Drawer.Screen
-        name="(auth)"
-        options={{ drawerItemStyle: { display: "none" }, headerShown: false }}
-      />
-      <Drawer.Screen
-        name="(tabs)"
-        options={{ drawerItemStyle: { display: "none" }, headerShown: false }}
-      />
-      <Drawer.Screen
-        name="reading-fonts"
-        options={{ drawerItemStyle: { display: "none" }, headerShown: false }}
-      />
-      <Drawer.Screen
-        name="reading-plans"
-        options={{ drawerItemStyle: { display: "none" }, headerShown: false }}
-      />
-      <Drawer.Screen
-        name="saved-verses"
-        options={{ drawerItemStyle: { display: "none" }, headerShown: false }}
-      />
-      <Drawer.Screen
-        name="[...unmatched]"
-        options={{ drawerItemStyle: { display: "none" }, headerShown: false }}
-      />
-    </Drawer>
+      <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="reading-fonts" options={{ headerShown: false }} />
+      <Stack.Screen name="reading-plans" options={{ headerShown: false }} />
+      <Stack.Screen name="note" options={{ headerShown: false }} />
+      <Stack.Screen name="saved-verses" options={{ headerShown: false }} />
+      <Stack.Screen name="[...unmatched]" options={{ headerShown: false }} />
+    </Stack>
   );
 }
 
 export default function RootLayout() {
   return (
     <AppProviders>
-      <AppDrawer />
+      <AppStack />
     </AppProviders>
   );
 }

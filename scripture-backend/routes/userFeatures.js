@@ -153,6 +153,38 @@ router.post('/notes', verifyToken, async (req, res) => {
   }
 });
 
+router.put('/notes/:id', verifyToken, async (req, res) => {
+  try {
+    const { verseReference, content } = req.body;
+    const note = await Note.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.userId },
+      { verseReference, content },
+      { new: true },
+    );
+    if (!note) {
+      return res.status(404).json({ success: false, message: 'Note not found.' });
+    }
+    return res.json({ success: true, note });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.delete('/notes/:id', verifyToken, async (req, res) => {
+  try {
+    const note = await Note.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user.userId,
+    });
+    if (!note) {
+      return res.status(404).json({ success: false, message: 'Note not found.' });
+    }
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get('/notes', verifyToken, async (req, res) => {
   try {
     const notes = await Note.find({ userId: req.user.userId }).sort({
