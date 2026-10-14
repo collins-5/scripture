@@ -13,6 +13,7 @@ import { verseOfTheDay } from '@/lib/daily-verse';
 import { PLAN_DAYS, describeReading, planDay, readingForDay } from '@/lib/plan';
 import { Card, IconCircle, ProgressRing, Screen } from '@/components/core/ui';
 import { useDoubleBackExit } from '@/hooks/useDoubleBackExit';
+import { Button } from '@/components/ui/button';
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -291,6 +292,7 @@ export default function HomeScreen() {
             Today · {todayLabel}
           </Text>
         </Card>
+        <Button text="onboarding" onPress={() => router.navigate('/(onboarding)')}/>
       </ScrollView>
     </Screen>
   );
