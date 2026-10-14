@@ -1,13 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +13,10 @@ import { Screen } from '@/components/core/ui';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useLibrary } from '@/hooks/use-library';
 import { formatRef } from '@/lib/bible/meta';
+import {
+  RichTextEditor,
+  RichTextEditorRef,
+} from '@/components/core/rich-text-editor';
 
 export default function NotePage() {
   const t = useAppTheme();
@@ -29,12 +30,19 @@ export default function NotePage() {
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const editorRef = useRef<RichTextEditorRef>(null);
 
   useEffect(() => {
-    if (isNew) return;
+    if (isNew) {
+      setLoaded(true);
+      return;
+    }
     if (existing) {
       setBody(existing.body);
       setNotFound(false);
+      setLoaded(true);
       return;
     }
     if (notes.length === 0 && !notesLoading) {
@@ -44,16 +52,27 @@ export default function NotePage() {
     }
   }, [isNew, existing, notes.length, notesLoading, refreshNotes]);
 
+  useEffect(() => {
+    if (loaded && existing?.body && editorRef.current) {
+      editorRef.current.setContent(existing.body);
+    }
+  }, [loaded, existing?.body]);
+
   const reference =
     existing?.bookName && existing.chapter
       ? formatRef(existing.bookName, existing.chapter, existing.verse)
       : null;
 
   const submit = async () => {
-    const trimmed = body.trim();
-    if (!trimmed || saving) return;
-    setSaving(true);
+    if (saving || !editorRef.current) return;
+
     try {
+      const html = await editorRef.current.getHTML();
+      const trimmed = html?.trim();
+
+      if (!trimmed || trimmed === '<p></p>') return;
+
+      setSaving(true);
       await saveNote({ ...(existing ?? {}), body: trimmed });
       router.back();
     } catch (error: any) {
@@ -145,87 +164,59 @@ export default function NotePage() {
         ) : null}
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
-      >
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-5 py-5"
-          keyboardShouldPersistTaps="handled"
-        >
-          {reference ? (
-            <View
-              className="pl-3 mb-5 border-l-2"
-              style={{ borderLeftColor: t.accent.main }}
-            >
-              <Text
-                className="text-xs font-semibold tracking-wide"
-                style={{ fontFamily: t.ui.semibold, color: t.accent.main }}
-              >
-                {reference}
-              </Text>
-              {existing?.quote ? (
-                <Text
-                  numberOfLines={6}
-                  className="mt-1.5"
-                  style={[
-                    t.reading.italic,
-                    {
-                      fontSize: 14,
-                      lineHeight: 21,
-                      color: t.c.muted,
-                    },
-                  ]}
-                >
-                  {existing.quote}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-
-          <TextInput
-            value={body}
-            onChangeText={setBody}
-            multiline
-            autoFocus
-            placeholder="Write your reflection…"
-            placeholderTextColor={t.c.placeholder}
-            textAlignVertical="top"
-            className="min-h-[240px] rounded-2xl border p-4"
-            style={{
-              borderColor: t.c.border,
-              backgroundColor: t.c.card,
-              fontFamily: t.reading.regular,
-              fontSize: t.reading.size(16),
-              lineHeight: t.reading.lh(16),
-              color: t.c.text,
-            }}
-          />
-        </ScrollView>
-
+      {reference ? (
         <View
-          className="flex-row gap-2.5 px-5 py-3 border-t"
-          style={{ borderTopColor: t.c.border, backgroundColor: t.c.bg }}
+          className="pl-3 mx-5 mt-4 mb-2 border-l-2"
+          style={{ borderLeftColor: t.accent.main }}
         >
-          <Pressable
-            onPress={submit}
-            disabled={!body.trim() || saving}
-            className="flex-1 min-h-[48px] rounded-2xl items-center justify-center"
-            style={{
-              backgroundColor: t.accent.main,
-              opacity: !body.trim() || saving ? 0.4 : 1,
-            }}
+          <Text
+            className="text-xs font-semibold tracking-wide"
+            style={{ fontFamily: t.ui.semibold, color: t.accent.main }}
           >
+            {reference}
+          </Text>
+          {existing?.quote ? (
             <Text
-              className="text-[15px] font-semibold"
-              style={{ fontFamily: t.ui.semibold, color: t.accent.on }}
+              numberOfLines={6}
+              className="mt-1.5"
+              style={[
+                t.reading.italic,
+                { fontSize: 14, lineHeight: 21, color: t.c.muted },
+              ]}
             >
-              {saving ? 'Saving…' : 'Save'}
+              {existing.quote}
             </Text>
-          </Pressable>
+          ) : null}
         </View>
-      </KeyboardAvoidingView>
+      ) : null}
+
+      <RichTextEditor
+        ref={editorRef}
+        initialContent={existing?.body ?? ''}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      />
+
+      <View
+        className="flex-row gap-2.5 px-5 py-3 border-t"
+        style={{ borderTopColor: t.c.border, backgroundColor: t.c.bg }}
+      >
+        <Pressable
+          onPress={submit}
+          disabled={saving}
+          className="flex-1 min-h-[48px] rounded-2xl items-center justify-center"
+          style={{
+            backgroundColor: t.accent.main,
+            opacity: saving ? 0.4 : 1,
+          }}
+        >
+          <Text
+            className="text-[15px] font-semibold"
+            style={{ fontFamily: t.ui.semibold, color: t.accent.on }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </Text>
+        </Pressable>
+      </View>
     </Screen>
   );
 }
