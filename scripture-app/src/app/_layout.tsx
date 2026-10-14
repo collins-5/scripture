@@ -4,6 +4,8 @@ import { useThemeColors } from "@/hooks/useThemeColors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Platform } from "react-native";
 
+import  '@/components/ui/bottom-sheets';
+
 import "../../global.css";
 
 function AppStack() {

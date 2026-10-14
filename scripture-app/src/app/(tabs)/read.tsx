@@ -17,9 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChapterPicker } from '@/components/core/ChapterPicker';
-import { NoteDraft, NoteEditor } from '@/components/core/NoteEditor';
-import { VersionSheet } from '@/components/core/VersionSheet';
+import { SheetManager } from 'react-native-actions-sheet';
 import { Screen } from '@/components/core/ui';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useLibrary } from '@/hooks/use-library';
@@ -78,10 +76,6 @@ export default function ReadScreen() {
     params.verse ? Number(params.verse) : null,
   );
   const [selected, setSelected] = useState<VerseBlock | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [translationOpen, setTranslationOpen] = useState(false);
-  const [draft, setDraft] = useState<NoteDraft>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const lastWrite = useRef(0);
@@ -152,17 +146,39 @@ export default function ReadScreen() {
     ? isSaved(book, chapter, selected.number, settings.translation)
     : false;
 
+  const openChapterPicker = () => {
+    SheetManager.show('chapter-picker', {
+      payload: {
+        currentBook: book,
+        currentChapter: chapter,
+        onSelect: (b, c) => go({ book: b, chapter: c }),
+      },
+    });
+  };
+
+  const openVersionSheet = () => {
+    SheetManager.show('version-sheet', {
+      payload: {
+        value: settings.translation,
+        onSelect: (value) => update({ translation: value }),
+      },
+    });
+  };
+
   const reflect = () => {
     if (!selected) return;
-    setDraft({
-      book,
-      bookName: bookInfo.name,
-      chapter,
-      verse: selected.number,
-      quote: selected.text,
-      body: '',
+    SheetManager.show('note-editor', {
+      payload: {
+        draft: {
+          book,
+          bookName: bookInfo.name,
+          chapter,
+          verse: selected.number,
+          quote: selected.text,
+          body: '',
+        },
+      },
     });
-    setEditorOpen(true);
   };
 
   const share = () => {
@@ -203,7 +219,7 @@ export default function ReadScreen() {
         }}
       >
         <Pressable
-          onPress={() => setPickerOpen(true)}
+          onPress={openChapterPicker}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
         >
           <Text
@@ -218,7 +234,7 @@ export default function ReadScreen() {
           <Ionicons name="chevron-down" size={14} color={t.c.muted} />
         </Pressable>
         <Pressable
-          onPress={() => setTranslationOpen(true)}
+          onPress={openVersionSheet}
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -500,27 +516,6 @@ export default function ReadScreen() {
           </View>
         </View>
       ) : null}
-
-      <ChapterPicker
-        visible={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        currentBook={book}
-        currentChapter={chapter}
-        onSelect={(b, c) => go({ book: b, chapter: c })}
-      />
-
-      <VersionSheet
-        visible={translationOpen}
-        onClose={() => setTranslationOpen(false)}
-        value={settings.translation}
-        onSelect={(value) => update({ translation: value })}
-      />
-
-      <NoteEditor
-        visible={editorOpen}
-        draft={draft}
-        onClose={() => setEditorOpen(false)}
-      />
     </Screen>
   );
 }
