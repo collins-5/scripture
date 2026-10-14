@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import scriptureRouter from './routes/scripture.js';
 import userFeaturesRouter from './routes/userFeatures.js';
-import { startDailyVerseJob } from './jobs/daily-verse.js';
 
 dotenv.config();
 
@@ -19,10 +18,7 @@ if (!MONGO_URI) {
 
 mongoose
   .connect(MONGO_URI)
-  .then(() => {
-    console.log('Cloud Database connected successfully.');
-    startDailyVerseJob();
-  })
+  .then(() => console.log('Cloud Database connected successfully.'))
   .catch((err) => console.error('Cloud Database connection error:', err));
 
 app.use(cors());

@@ -1,4 +1,3 @@
-import cron from 'node-cron';
 import axios from 'axios';
 import { User } from '../models/schemas.js';
 import { pickVerseForDate } from '../data/daily-verses.js';
@@ -11,7 +10,7 @@ async function sendDailyVerse() {
     const tokens = users.map((u) => u.pushToken).filter(Boolean);
 
     if (tokens.length === 0) {
-      return;
+      return { sent: 0, ok: 0, failed: 0 };
     }
 
     const messages = tokens.map((token) => ({
@@ -56,15 +55,14 @@ async function sendDailyVerse() {
 
       tickets.push(...rows);
     }
-  } catch (error) {
-    return;
-  }
-}
 
-export function startDailyVerseJob() {
-  cron.schedule('0 7 * * *', sendDailyVerse, {
-    timezone: 'Africa/Nairobi',
-  });
+    const ok = tickets.filter((t) => t.status === 'ok').length;
+    const failed = tickets.filter((t) => t.status === 'error').length;
+
+    return { sent: messages.length, ok, failed };
+  } catch (error) {
+    return { sent: 0, ok: 0, failed: 0, error: error.message };
+  }
 }
 
 export { sendDailyVerse };

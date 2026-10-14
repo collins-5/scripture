@@ -411,15 +411,20 @@ router.post('/send-test-push', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/cron/daily-verse', async (req, res) => {
-  const secret = req.headers['x-cron-secret'];
-  if (!secret || secret !== process.env.CRON_SECRET) {
+async function handleDailyVerseCron(req, res) {
+  const authHeader = req.headers.authorization;
+  const expected = `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!authHeader || authHeader !== expected) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
 
   await sendDailyVerse();
 
   return res.json({ success: true, message: 'Daily verse sent.' });
-});
+}
+
+router.get('/cron/daily-verse', handleDailyVerseCron);
+router.post('/cron/daily-verse', handleDailyVerseCron);
 
 export default router;
