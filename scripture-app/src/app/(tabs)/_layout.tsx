@@ -1,6 +1,8 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/hooks/use-app-theme';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -22,6 +24,10 @@ const TABS: TabDef[] = [
 
 export default function TabsLayout() {
   const t = useAppTheme();
+  const insets = useSafeAreaInsets();
+
+  const bottomInset = insets.bottom;
+  const baseHeight = Platform.OS === 'ios' ? 52 : 56;
 
   return (
     <Tabs
@@ -33,11 +39,20 @@ export default function TabsLayout() {
           backgroundColor: t.c.card,
           borderTopColor: t.c.border,
           borderTopWidth: 1,
+          height: baseHeight + bottomInset,
+          paddingBottom: bottomInset,
+          paddingTop: 6,
         },
-        tabBarItemStyle: { paddingVertical: 4 },
+        tabBarItemStyle: {
+          paddingVertical: 0,
+        },
         tabBarLabelStyle: {
           fontFamily: t.ui.medium,
           fontSize: 10,
+          marginTop: 2,
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+        },
+        tabBarIconStyle: {
           marginTop: 2,
         },
       }}

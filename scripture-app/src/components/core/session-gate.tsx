@@ -4,6 +4,7 @@ import { useRouter, useSegments } from 'expo-router';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
+import SessionLoading from './session-loading';
 
 export function SessionGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -65,7 +66,7 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
           backgroundColor: t.c.bg,
         }}
       >
-        <ActivityIndicator size="large" color={t.accent.main} />
+        <SessionLoading/>
       </View>
     );
   }

@@ -20,14 +20,20 @@ export function Screen({
   children,
   edges = ['top'],
   style,
+  className,
 }: {
   children: ReactNode;
   edges?: Edge[];
   style?: StyleProp<ViewStyle>;
+  className?: string;
 }) {
   const t = useAppTheme();
   return (
-    <SafeAreaView edges={edges} style={[{ flex: 1, backgroundColor: t.c.bg }, style]}>
+    <SafeAreaView
+      edges={edges}
+      className={className}
+      style={[{ flex: 1, backgroundColor: t.c.bg }, style]}
+    >
       {children}
     </SafeAreaView>
   );
@@ -78,10 +84,12 @@ export function Card({
   children,
   onPress,
   style,
+  className,
 }: {
   children: ReactNode;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  className?: string;
 }) {
   const t = useAppTheme();
   const base: ViewStyle = {
@@ -92,18 +100,33 @@ export function Card({
   };
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [base, { opacity: pressed ? 0.85 : 1 }, style]}>
+      <Pressable
+        onPress={onPress}
+        className={className}
+        style={({ pressed }) => [base, { opacity: pressed ? 0.85 : 1 }, style]}
+      >
         {children}
       </Pressable>
     );
   }
-  return <View style={[base, style]}>{children}</View>;
+  return (
+    <View className={className} style={[base, style]}>
+      {children}
+    </View>
+  );
 }
 
-export function SectionLabel({ children }: { children: string }) {
+export function SectionLabel({
+  children,
+  className,
+}: {
+  children: string;
+  className?: string;
+}) {
   const t = useAppTheme();
   return (
     <Text
+      className={className}
       style={{
         fontFamily: t.ui.semibold,
         fontSize: 11,
@@ -209,16 +232,19 @@ export function IconCircle({
   size = 48,
   onPress,
   filled,
+  className,
 }: {
   name: IconName;
   size?: number;
   onPress?: () => void;
   filled?: boolean;
+  className?: string;
 }) {
   const t = useAppTheme();
   return (
     <Pressable
       onPress={onPress}
+      className={className}
       style={({ pressed }) => ({
         width: size,
         height: size,

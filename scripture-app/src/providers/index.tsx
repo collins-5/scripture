@@ -77,9 +77,9 @@ function ThemedProviders({ children }: { children: React.ReactNode }) {
               barStyle={isDark ? "light-content" : "dark-content"}
             />
             <ReadyGate>
-              {/* <SessionGate> */}
+              <SessionGate>
                 {children}
-              {/* </SessionGate> */}
+              </SessionGate>
             </ReadyGate>
           </View>
         </SheetProvider>
