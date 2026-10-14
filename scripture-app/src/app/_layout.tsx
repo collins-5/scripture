@@ -1,11 +1,17 @@
 import { Stack } from "expo-router";
 import { AppProviders } from "@/providers";
 import { useThemeColors } from "@/hooks/useThemeColors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Platform } from "react-native";
 
 import "../../global.css";
 
 function AppStack() {
   const { surface, text } = useThemeColors();
+  const insets = useSafeAreaInsets();
+
+  const bottomInset = insets.bottom;
+  const baseBottom = Platform.OS === "android" ? 8 : 0;
 
   return (
     <Stack
@@ -14,7 +20,10 @@ function AppStack() {
         headerStyle: { backgroundColor: surface.card },
         headerTintColor: text.dark,
         headerShadowVisible: false,
-        contentStyle: { backgroundColor: surface.appGray },
+        contentStyle: {
+          backgroundColor: surface.appGray,
+          paddingBottom: Platform.OS === "android" ? baseBottom : 0,
+        },
         animation: "slide_from_right",
       }}
     >

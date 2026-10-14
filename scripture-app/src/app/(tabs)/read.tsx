@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChapterPicker } from '@/components/core/ChapterPicker';
 import { NoteDraft, NoteEditor } from '@/components/core/NoteEditor';
 import { VersionSheet } from '@/components/core/VersionSheet';
@@ -25,6 +26,9 @@ import { ChapterBlock, VerseBlock, chapterBlocks } from '@/lib/bible/text';
 import { ReadingSkeleton } from '@/components/core/ReadingSkeleton';
 
 type Paragraph = { key: string; heading?: string; verses: VerseBlock[] };
+
+const TAB_BAR_HEIGHT = 62;
+const TAB_BAR_GAP = 12;
 
 function toParagraphs(blocks: ChapterBlock[]): Paragraph[] {
   const out: Paragraph[] = [];
@@ -46,6 +50,7 @@ function toParagraphs(blocks: ChapterBlock[]): Paragraph[] {
 export default function ReadScreen() {
   const t = useAppTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ book?: string; chapter?: string; verse?: string }>();
   const { settings, update } = useSettings();
   const { lastRead, setLastRead, markReadToday, toggleSaved, isSaved } = useLibrary();
@@ -66,6 +71,9 @@ export default function ReadScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
   const lastWrite = useRef(0);
+
+  const tabBarSpace = Math.max(insets.bottom, TAB_BAR_GAP) + TAB_BAR_HEIGHT + 16;
+  const bottomBarSpace = Math.max(insets.bottom, 12) + 76;
 
   useEffect(() => {
     if (params.book && BOOK_MAP[params.book]) {
@@ -191,7 +199,10 @@ export default function ReadScreen() {
         onScroll={(e) => report(e, false)}
         onScrollEndDrag={(e) => report(e, true)}
         onMomentumScrollEnd={(e) => report(e, true)}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: selected ? 120 : 40 }}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingBottom: selected ? bottomBarSpace : tabBarSpace,
+        }}
       >
         <View style={{ alignItems: 'center', paddingTop: 28, paddingBottom: 20 }}>
           <Text style={{ fontFamily: t.ui.medium, fontSize: 11, letterSpacing: 2, color: t.c.muted }}>
@@ -330,7 +341,7 @@ export default function ReadScreen() {
             position: 'absolute',
             left: 16,
             right: 16,
-            bottom: 16,
+            bottom: Math.max(insets.bottom, TAB_BAR_GAP) + TAB_BAR_HEIGHT + 12,
             backgroundColor: t.c.sheet,
             borderRadius: 18,
             borderWidth: 1,

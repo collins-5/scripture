@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   BottomSheet,
   Card,
@@ -19,6 +20,9 @@ import { ThemeMode, useThemePreference } from '@/hooks/use-theme-preference';
 import { ACCENTS, ACCENT_ORDER } from '@/lib/theme/accents';
 import { TRANSLATIONS, translationLabel } from '@/lib/bible/translations';
 import { cancelDailyVerse, scheduleDailyVerse } from '@/lib/reminders';
+
+const TAB_BAR_HEIGHT = 62;
+const TAB_BAR_GAP = 12;
 
 const MODES: { key: ThemeMode; label: string; icon: IconName }[] = [
   { key: 'light', label: 'Light', icon: 'sunny-outline' },
@@ -100,6 +104,7 @@ function Stepper({
 export default function MoreScreen() {
   const t = useAppTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { mode, setMode } = useThemePreference();
   const { settings, update } = useSettings();
   const { user } = useAuth();
@@ -118,6 +123,9 @@ export default function MoreScreen() {
   );
   const [minute, setMinute] = useState(settings.reminderMinute);
   const [pm, setPm] = useState(settings.reminderHour >= 12);
+
+  const bottomPad =
+    Math.max(insets.bottom, TAB_BAR_GAP) + TAB_BAR_HEIGHT + 24;
 
   const openReminder = () => {
     setEnabled(settings.reminderEnabled);
@@ -159,7 +167,12 @@ export default function MoreScreen() {
   return (
     <Screen>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 20,
+          paddingBottom: bottomPad,
+        }}
+        showsVerticalScrollIndicator={false}
       >
         <Text style={{ fontFamily: t.display.medium, fontSize: 32, color: t.c.text }}>More</Text>
 
