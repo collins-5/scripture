@@ -1,4 +1,3 @@
-import 'expo-router/entry';
 import { Platform } from 'react-native';
 
 if (Platform.OS === 'android') {
@@ -6,3 +5,5 @@ if (Platform.OS === 'android') {
   const { widgetTaskHandler } = require('./src/widgets/android/widget-task-handler');
   registerWidgetTaskHandler(widgetTaskHandler);
 }
+
+import 'expo-router/entry';
