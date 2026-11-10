@@ -9,7 +9,12 @@
     "scheme": "mobileapp",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.scripture.mobileapp"
+      "bundleIdentifier": "com.scripture.mobileapp",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.scripture.mobileapp"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -41,7 +46,26 @@
           "backgroundColor": "#0d9488"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@bacons/apple-targets",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "VerseOfTheDay",
+              "label": "Verse of the day",
+              "description": "Today's verse, one tap from the passage",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -7,9 +7,10 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { useAppTheme } from '@/hooks/use-app-theme';
+import { useWidgetSync } from '@/hooks/use-widget-sync';
+import { TAB_BAR_GAP, TAB_BAR_HEIGHT } from '@/hooks/use-tab-bar-space';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -28,9 +29,7 @@ const TABS: TabDef[] = [
   { name: 'more', title: 'More', icon: 'menu', outline: 'menu-outline' },
 ];
 
-const BAR_HEIGHT = 62;
 const H_PADDING = 16;
-const BOTTOM_GAP = 12;
 
 const AnimatedText = Animated.createAnimatedComponent(Text);
 
@@ -58,10 +57,7 @@ function TabButton({
   const iconStyle = useAnimatedStyle(() => {
     const p = progress.value;
     return {
-      transform: [
-        { scale: 0.9 + p * 0.1 },
-        { translateY: -2 * p },
-      ],
+      transform: [{ scale: 0.9 + p * 0.1 }, { translateY: -2 * p }],
       opacity: 0.7 + p * 0.3,
     };
   });
@@ -83,11 +79,7 @@ function TabButton({
       android_ripple={{ color: `${t.accent.main}22`, borderless: true }}
     >
       <Animated.View style={iconStyle}>
-        <Ionicons
-          name={focused ? tab.icon : tab.outline}
-          size={22}
-          color={color}
-        />
+        <Ionicons name={focused ? tab.icon : tab.outline} size={22} color={color} />
       </Animated.View>
       <AnimatedText
         style={[
@@ -110,7 +102,9 @@ export default function TabsLayout() {
   const t = useAppTheme();
   const insets = useSafeAreaInsets();
 
-  const bottomOffset = Math.max(insets.bottom, BOTTOM_GAP);
+  useWidgetSync();
+
+  const bottomOffset = Math.max(insets.bottom, TAB_BAR_GAP);
 
   return (
     <Tabs
@@ -125,10 +119,7 @@ export default function TabsLayout() {
         return (
           <View
             pointerEvents="box-none"
-            style={[
-              styles.barWrapper,
-              { bottom: bottomOffset, paddingHorizontal: H_PADDING },
-            ]}
+            style={[styles.barWrapper, { bottom: bottomOffset, paddingHorizontal: H_PADDING }]}
           >
             <View
               style={[
@@ -169,11 +160,7 @@ export default function TabsLayout() {
       }}
     >
       {TABS.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{ title: tab.title }}
-        />
+        <Tabs.Screen key={tab.name} name={tab.name} options={{ title: tab.title }} />
       ))}
     </Tabs>
   );
@@ -191,8 +178,8 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: 'row',
-    height: BAR_HEIGHT,
-    borderRadius: BAR_HEIGHT / 2,
+    height: TAB_BAR_HEIGHT,
+    borderRadius: TAB_BAR_HEIGHT / 2,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'space-between',
