@@ -169,7 +169,6 @@ export default function MoreScreen() {
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: 20,
           paddingBottom: bottomPad,
         }}
         showsVerticalScrollIndicator={false}

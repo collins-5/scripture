@@ -16,12 +16,13 @@ Notifications.setNotificationHandler({
 
 async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync('default', {
-    name: 'Default',
+  
+  await Notifications.setNotificationChannelAsync('daily-verses', {
+    name: 'Daily Verses',
     importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
+    vibrationPattern:[0, 250, 250, 250],
     lightColor: '#0d9488',
-    sound: 'default',
+    sound: 'bell',
   });
 }
 
@@ -80,7 +81,12 @@ export async function scheduleLocalDailyVerse(hour: number, minute: number) {
     content: {
       title: 'Daily Verse',
       body: "Read today's scripture and reflect.",
-      sound: 'default',
+      sound: Platform.OS === 'ios' ? 'bell.wav' : 'bell',
+      ...Platform.select({
+        android: {
+          channelId: 'daily-verses',
+        },
+      }),
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,

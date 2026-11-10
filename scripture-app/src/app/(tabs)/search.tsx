@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Card, Chip, EmptyState, Screen, SectionLabel } from '@/components/core/ui';
@@ -7,6 +8,7 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 import { useSettings } from '@/hooks/use-settings';
 import { Scope, useDebounced, useKeywordSearch } from '@/hooks/use-keyword-search';
 import { formatRef, parseReference } from '@/lib/bible/meta';
+import { TAB_BAR_GAP, TAB_BAR_HEIGHT } from '@/hooks/use-tab-bar-space'; // 👈 Import constants
 
 const TRENDING = ['love', 'light', 'shepherd', 'spirit', 'grace'];
 
@@ -23,6 +25,7 @@ function escapeRegExp(value: string): string {
 export default function SearchScreen() {
   const t = useAppTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { settings } = useSettings();
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<Scope>('all');
@@ -40,6 +43,8 @@ export default function SearchScreen() {
     () => (terms.length ? new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'gi') : null),
     [terms],
   );
+
+  const safeBottomPadding = Math.max(insets.bottom, TAB_BAR_GAP) + TAB_BAR_HEIGHT + 24;
 
   const open = (book: string, chapter: number, verse?: number) =>
     router.push({
@@ -66,7 +71,10 @@ export default function SearchScreen() {
     <Screen>
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }}
+        contentContainerStyle={{ 
+          paddingHorizontal: 20, 
+          paddingBottom: safeBottomPadding 
+        }}
       >
         <Text style={{ fontFamily: t.display.medium, fontSize: 32, color: t.c.text }}>Search</Text>
 
@@ -190,6 +198,7 @@ export default function SearchScreen() {
                   borderRadius: 999,
                   borderWidth: 1,
                   borderColor: t.accent.main,
+                  marginVertical: 12 // Spacing helper for clarity
                 }}
               >
                 <Text style={{ fontFamily: t.ui.semibold, fontSize: 13, color: t.accent.main }}>

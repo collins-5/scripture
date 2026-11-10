@@ -23,7 +23,22 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.scripture.mobileapp",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "mobileapp"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,7 +50,10 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#4F46E5"
+          "color": "#4F46E5",
+          "sounds": [
+            "./assets/sounds/bell.wav"
+          ]
         }
       ],
       [

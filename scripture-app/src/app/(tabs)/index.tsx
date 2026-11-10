@@ -103,14 +103,6 @@ export default function HomeScreen() {
     }
   };
 
-  const actions = [
-    { label: 'Read', icon: 'book-outline' as const, onPress: () => router.navigate('/read') },
-    { label: 'Search', icon: 'search-outline' as const, onPress: () => router.navigate('/search') },
-    { label: 'Notes', icon: 'journal-outline' as const, onPress: () => router.navigate('/notes') },
-    { label: 'Saved', icon: 'bookmark-outline' as const, onPress: () => router.push('/saved-verses') },
-    { label: 'Plans', icon: 'list-outline' as const, onPress: () => router.push('/reading-plans') },
-  ];
-
   return (
     <Screen>
       <ScrollView
@@ -295,24 +287,6 @@ export default function HomeScreen() {
 
           <Ionicons name="chevron-forward" size={18} color={t.c.faint} />
         </Card>
-
-        <View className="flex-row justify-between mt-7 px-1">
-          {actions.map((action) => (
-            <Pressable
-              key={action.label}
-              onPress={action.onPress}
-              className="items-center gap-2"
-            >
-              <IconCircle name={action.icon} size={52} />
-              <Text
-                className="text-[11px]"
-                style={{ fontFamily: t.ui.medium, color: t.c.muted }}
-              >
-                {action.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
 
         <Card className="p-5 mt-7">
           <View className="flex-row items-center justify-between">

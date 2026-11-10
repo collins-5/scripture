@@ -65,10 +65,9 @@ export default function NotesScreen() {
 
   return (
     <Screen>
-      <View className="flex-row items-center justify-between px-5 pt-5 pb-2">
+      <View className="flex-row items-center justify-between px-5 pb-2">
         <Text
-          className="text-3xl"
-          style={{ fontFamily: t.display.medium, color: t.c.text }}
+          style={{ fontFamily: t.display.medium, color: t.c.text, fontSize: 32 }}
         >
           Notes
         </Text>
