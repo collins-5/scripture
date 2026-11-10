@@ -4,6 +4,7 @@ import { useSettings } from '@/hooks/use-settings';
 import { buildWeek } from '@/lib/widgets/daily';
 import { syncWidget } from '@/lib/widgets/sync';
 import { readLastSync, writeLastSync } from '@/lib/widgets/store';
+import { WIDGET_APP_GROUP, WIDGET_SCHEME } from '@/lib/widgets/config';
 import { dayKey } from '@/lib/dates';
 
 export function useWidgetSync() {
@@ -14,7 +15,13 @@ export function useWidgetSync() {
     let cancelled = false;
 
     (async () => {
-      const marker = `${dayKey()}|${settings.translation}|${settings.accent}`;
+      const marker = [
+        WIDGET_APP_GROUP,
+        WIDGET_SCHEME,
+        dayKey(),
+        settings.translation,
+        settings.accent,
+      ].join('|');
       if ((await readLastSync()) === marker) return;
       const week = await buildWeek(settings.translation, settings.accent);
       if (cancelled || week.length === 0) return;
